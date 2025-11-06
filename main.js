@@ -24,7 +24,7 @@ const controls = new OrbitControls( camera, renderer.domElement );
 
 
 
-const n = 1;
+const n = 2;
 
 const edge_width=0.01
 const edge_material = new THREE.MeshStandardMaterial( { color: 0xbbbbbb, transparent:true, opacity:0.75, side:THREE.DoubleSide} );
