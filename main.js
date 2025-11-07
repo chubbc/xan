@@ -1,202 +1,211 @@
-// import './style.css'
-import * as THREE from 'three';
+import * as THREE from 'three'
+import { GUI } from 'dat.gui'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
-const scene = new THREE.Scene();
+const scene = new THREE.Scene()
+
 scene.background = new THREE.Color(0x222222)
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
-camera.position.set(0.4,1.1,0.8);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setAnimationLoop( animate );
-document.body.appendChild( renderer.domElement );
+camera.position.set(-2, 0.9, 0.25)
 
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-const controls = new OrbitControls( camera, renderer.domElement );
+const renderer = new THREE.WebGLRenderer()
+renderer.setPixelRatio(window.devicePixelRatio)
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setAnimationLoop(animate)
+document.body.appendChild(renderer.domElement)
 
-// // const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-// // const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-// // const cube = new THREE.Mesh( geometry, material );
-// // scene.add( cube );
+const controls = new OrbitControls(camera, renderer.domElement)
 
+const params = {
+    n: 1,
 
+    visible_cent:true,  color_cent:0xff7777,        // Central mode
+    visible_sat:true,   color_sat:0x77ff77,         // Satellite modes
+    visible_virt:false, color_virt:0x7777ff,        // Virtual spins
+    
+    visible_cons:false, color_cons:0x77ffff,        // Constraints
+    visible_par:false,  color_par:0xff77ff,         // Parity
+    visible_int:false,  color_int:0xffff77,         // Interaction
 
-
-const n = 2;
-
-const edge_width=0.01
-const edge_material = new THREE.MeshStandardMaterial( { color: 0xbbbbbb, transparent:true, opacity:0.75, side:THREE.DoubleSide} );
-for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) {
-    const cyl_x = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    const cyl_y = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    const cyl_z = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    cyl_x.rotateZ(Math.PI/2)
-    cyl_z.rotateX(Math.PI/2)
-    cyl_x.position.set(0,i-n/2,j-n/2)
-    cyl_y.position.set(i-n/2,0,j-n/2)
-    cyl_z.position.set(i-n/2,j-n/2,0)
-    scene.add(cyl_x,cyl_y,cyl_z)
+    highlight: "None",  color_highlight:0x227722    // Highlight
 }
 
-const vert_rad=0.025
-// const vert_material = new THREE.MeshStandardMaterial( { color: 0xff3333, side:THREE.DoubleSide} );
-// for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0; k<=n; k++) {
-//   const vert = new THREE.Mesh(new THREE.SphereGeometry(vert_rad),vert_material)
-//   vert.position.set(i-n/2,j-n/2,k-n/2)
-//   scene.add(vert)
-// }
+let obj_latt,
+    obj_cent, obj_sat, obj_virt,
+    obj_cons, obj_par, obj_int,
+    obj_sat_l, obj_sat_d, obj_sat_r
 
-function add_vert(x,y,z,color) {
-    const vert = new THREE.Mesh(new THREE.SphereGeometry(vert_rad),new THREE.MeshStandardMaterial( { color: color} ))
-    vert.position.set(x-n/2,y-n/2,z-n/2)
-    scene.add(vert)
+function add_ball(obj,x,y,z,color) {
+    const ball_rad = 0.025
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(ball_rad), new THREE.MeshStandardMaterial({color: color}))
+    ball.position.set(x,y,z)
+    obj.add(ball)
 }
 
-for(let i=0; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0.5; k<=n; k++) {
-    add_vert(i,j,k,0x33ff33)
-    add_vert(i,j-0.25,k,0x7777ff)
-    add_vert(i,j+0.25,k,0x7777ff)
-    add_vert(i,j,k-0.25,0x2222ff)
+function update_lattice() {
+    const n = params.n
+    scene.remove(obj_latt, obj_cent, obj_sat, obj_virt, obj_cons, obj_par, obj_int)
+
+    obj_latt = new THREE.Object3D()
+
+    obj_cent = new THREE.Object3D()
+    obj_sat  = new THREE.Object3D()
+    obj_virt = new THREE.Object3D()
+    
+    obj_cons = new THREE.Object3D()
+    obj_par  = new THREE.Object3D() 
+    obj_int  = new THREE.Object3D()
+
+    obj_sat_l = new THREE.Object3D()
+    obj_sat_d = new THREE.Object3D()
+    obj_sat_r = new THREE.Object3D()
+    obj_sat.add(obj_sat_l,obj_sat_d,obj_sat_r)
+
+    // Lattice
+    const edge_width = 0.01
+    const edge_material = new THREE.MeshStandardMaterial({color: 0xbbbbbb, transparent:true, opacity:0.5, side:THREE.DoubleSide})
+    for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) {
+        const cyl_x = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n),edge_material)
+        const cyl_y = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n),edge_material)
+        const cyl_z = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n),edge_material)
+        cyl_x.rotateZ(Math.PI/2)
+        cyl_z.rotateX(Math.PI/2)
+        cyl_x.position.set(n/2,i,j)
+        cyl_y.position.set(i,n/2,j)
+        cyl_z.position.set(i,j,n/2)
+        obj_latt.add(cyl_x,cyl_y,cyl_z)
+    }
+
+    // Cent and sat
+    for(let i=0; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0.5; k<=n; k++) {
+        add_ball(obj_cent,i,j,k,params.color_cent)
+        add_ball(obj_sat_r,i,j-0.25,k,params.color_sat)
+        add_ball(obj_sat_d,i,j,k-0.25,params.color_sat)
+        add_ball(obj_sat_l,i,j+0.25,k,params.color_sat)
+    }
+    for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0.5; k<=n; k++) {
+        add_ball(obj_cent,i,j,k,params.color_cent)
+        add_ball(obj_sat_r,i,j,k-0.25,params.color_sat)
+        add_ball(obj_sat_d,i-0.25,j,k,params.color_sat)
+        add_ball(obj_sat_l,i,j,k+0.25,params.color_sat)
+    }
+    for(let i=0.5; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0; k<=n; k++) {
+        add_ball(obj_cent,i,j,k,params.color_cent)
+        add_ball(obj_sat_r,i-0.25,j,k,params.color_sat)
+        add_ball(obj_sat_d,i,j-0.25,k,params.color_sat)
+        add_ball(obj_sat_l,i+0.25,j,k,params.color_sat)
+    }
+
+    // Virtual
+    for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0; k<=n; k++)
+        add_ball(obj_virt,i,j,k,params.color_virt)
+    for(let i=0; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0; k<=n; k++)
+        add_ball(obj_virt,i,j,k,params.color_virt)
+    for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0.5; k<=n; k++)
+        add_ball(obj_virt,i,j,k,params.color_virt)
+
+    const cons_material = new THREE.MeshBasicMaterial({color: params.color_cons})
+    for(let i=0; i<=1; i++) {
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(i,0.5,0.5)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.5,i,0.5)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.5,0.5,i)]),cons_material))
+
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(i,0.5,0.25)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(i,0.25,0.5)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(i,0.75,0.5)]),cons_material))
+
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.25,i,0.5)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.5,i,0.25)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.5,i,0.75)]),cons_material))
+        
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.25,0.5,i)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.75,0.5,i)]),cons_material))
+        obj_cons.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(0.5,0.25,i)]),cons_material))
+    }
+       
+    const par_material = new THREE.MeshBasicMaterial({color: params.color_par})
+    obj_par.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1,0.5), new THREE.Vector3(1,1,0.5)]),par_material))
+    obj_par.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.5,1,0), new THREE.Vector3(0.5,1,1)]),par_material))
+
+    const int_material = new THREE.MeshBasicMaterial({color: params.color_int})
+    // for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0.5; k<n; k++)
+    //     obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,j-0.25,k), new THREE.Vector3(i+0.25,j,k), new THREE.Vector3(i,j+0.25,k)]),int_material))
+    // for(let i=0; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0; k<n; k++)
+    //     obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i-0.25,j,k), new THREE.Vector3(i,j,k+0.25), new THREE.Vector3(i+0.25,j,k)]),int_material))
+    // for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0; k<n; k++)
+    //     obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,j,k-0.25), new THREE.Vector3(i,j+0.25,k), new THREE.Vector3(i,j,k+0.25)]),int_material))
+    for(let i=0; i<n; i++) for(let j=1; j<n; j++) for(let k=0.5; k<n; k++)
+        obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,j-0.25,k), new THREE.Vector3(i+0.25,j,k), new THREE.Vector3(i,j+0.25,k)]),int_material))
+    for(let i=1; i<n; i++) for(let j=0.5; j<n; j++) for(let k=0; k<n; k++)
+        obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i-0.25,j,k), new THREE.Vector3(i,j,k+0.25), new THREE.Vector3(i+0.25,j,k)]),int_material))
+    for(let i=0.5; i<n; i++) for(let j=0; j<n; j++) for(let k=1; k<n; k++)
+        obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,j,k-0.25), new THREE.Vector3(i,j+0.25,k), new THREE.Vector3(i,j,k+0.25)]),int_material))
+    
+    
+
+    scene.add(obj_latt, obj_cent, obj_sat, obj_virt, obj_cons, obj_par, obj_int)
 }
 
-for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0.5; k<=n; k++) {
-    add_vert(i,j,k,0x33ff33)
-    add_vert(i-0.25,j,k,0x2222ff)
-    add_vert(i,j,k-0.25,0x7777ff)
-    add_vert(i,j,k+0.25,0x7777ff)
-}
+update_lattice()
 
-for(let i=0.5; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0; k<=n; k++) {
-    add_vert(i,j,k,0x33ff33)
-    add_vert(i-0.25,j,k,0x7777ff)
-    add_vert(i+0.25,j,k,0x7777ff)
-    add_vert(i,j-0.25,k,0x2222ff)
-}
+const gui = new GUI()
 
-for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0; k<=n; k++)
-    add_vert(i,j,k,0xffff33)
-for(let i=0; i<=n; i++) for(let j=0.5; j<=n; j++) for(let k=0; k<=n; k++)
-    add_vert(i,j,k,0xffff33)
-for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0.5; k<=n; k++)
-    add_vert(i,j,k,0xffff33)
+const sizeFolder = gui.addFolder('Size')
+sizeFolder.add(params,'n',1,5,1).name('n').onChange(update_lattice)
+sizeFolder.open()
 
+const spinFolder = gui.addFolder('Modes/spins')
+spinFolder.add(params, 'visible_cent').name('<div style="color:black;background-color:#'+params.color_cent.toString(16)+';"> Central modes (primal) </div>')
+spinFolder.add(params, 'visible_sat').name('<div style="color:black;background-color:#'+params.color_sat.toString(16)+';"> Satellite spins (dual) </div>')
+spinFolder.add(params, 'visible_virt').name('<div style="color:black;background-color:#'+params.color_virt.toString(16)+';"> Virtual spins </div>')
+spinFolder.open()
 
+const setFolder = gui.addFolder('Sets')
+setFolder.add(params, 'visible_cons').name('<div style="color:black;background-color:#'+params.color_cons.toString(16)+';"> Constraint </div>')
+setFolder.add(params, 'visible_par').name('<div style="color:black;background-color:#'+params.color_par.toString(16)+';"> Parity </div>')
+setFolder.add(params, 'visible_int').name('<div style="color:black;background-color:#'+params.color_int.toString(16)+';"> Interaction </div>')
+setFolder.open()
 
+const highlightFolder = gui.addFolder('Highlight')
+highlightFolder.add(params,'highlight').options(['None','Left','Down','Right'])
+    .name('<div style="color:black;background-color:#'+params.color_highlight.toString(16)+';"> Highlighted sat </div>')
+highlightFolder.open()
 
-const con_width=0.01
-const con_material = new THREE.MeshStandardMaterial( { color: 0xff7777, transparent:true, opacity:0.75, side:THREE.DoubleSide} );
-for(let i=0; i<=n; i++) for(let j=0; j<=n; j++) {
-    const cyl_x = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    const cyl_y = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    const cyl_z = new THREE.Mesh(new THREE.CylinderGeometry(edge_width,edge_width,n,100,100),edge_material)
-    cyl_x.rotateZ(Math.PI/2)
-    cyl_z.rotateX(Math.PI/2)
-    cyl_x.position.set(0,i-n/2,j-n/2)
-    cyl_y.position.set(i-n/2,0,j-n/2)
-    cyl_z.position.set(i-n/2,j-n/2,0)
-    scene.add(cyl_x,cyl_y,cyl_z)
-}
-
-const points=[]
-points.push(new THREE.Vector3(-0.5, -0.5, 0))
-points.push(new THREE.Vector3(-0.5, +0.5, 0))
-points.push(new THREE.Vector3(+0.5, +0.5, 0))
-points.push(new THREE.Vector3(+0.5, -0.5, 0))
-points.push(new THREE.Vector3(-0.5, -0.5, 0))
-
-let conn
-conn = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.MeshBasicMaterial( {color: 0xff3333} ) );
-scene.add(conn)
-conn = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.MeshBasicMaterial( {color: 0xff3333} ) );
-conn.rotateX(Math.PI/2)
-scene.add(conn)
-conn = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.MeshBasicMaterial( {color: 0xff3333} ) );
-conn.rotateY(Math.PI/2)
-scene.add(conn)
-
-// let conn = new THREE.Line()
-
-// const face_material = new THREE.MeshStandardMaterial( { color: 0xffffff, transparent:true, opacity:0.1, side:THREE.DoubleSide, depthWrite:false} );
-// for(let i = 0; i<=n; i++) {
-
-//   const face_x = new THREE.Mesh(new THREE.PlaneGeometry(n,n,100,100),face_material)
-//   const face_y = new THREE.Mesh(new THREE.PlaneGeometry(n,n,100,100),face_material)
-//   const face_z = new THREE.Mesh(new THREE.PlaneGeometry(n,n,100,100),face_material)
-  
-//   face_x.rotateY(Math.PI/2)
-//   face_y.rotateX(Math.PI/2)
-//   face_x.position.set(i-n/2,0,0)
-//   face_y.position.set(0,i-n/2,0)
-//   face_z.position.set(0,0,i-n/2)
-//   scene.add(face_x,face_y,face_z)
-// }
-
-
-
-// const light = new THREE.DirectionalLight()
-// light.position.set(-1, 2, 4)
-// scene.add(light)
-
-
-
-
-
-
-
-// // renderer.render( scene, camera );
-
-
-
-
-// // renderer.render( scene, camera );
-
-// function animate() {
-
-//   // cube.rotation.x += 0.0;
-//   // cube.rotation.y += 0.0;
-
-//   renderer.render( scene, camera );
-
-// }
-
-
-
-
-// Torus
-
-// const geometry = new THREE.TorusGeometry(10, 3, 16, 100);
-// const material = new THREE.MeshStandardMaterial({ color: 0xff6347 });
-// const torus = new THREE.Mesh(geometry, material);
-// scene.add(torus);
-
-// Lights
-
-const pointLight = new THREE.PointLight(0xffffff,100);
-pointLight.position.set(5, 6, 7);
-const ambientLight = new THREE.AmbientLight(0xffffff,0.25);
-scene.add(pointLight, ambientLight);
+const pointLight = new THREE.PointLight(0xffffff,100)
+pointLight.position.set(-7, 5, 6)
+const ambientLight = new THREE.AmbientLight(0xffffff,0.25)
+scene.add(pointLight, ambientLight)
 
 // Helpers
-
-const lightHelper = new THREE.PointLightHelper(pointLight)
-// const gridHelper = new THREE.GridHelper(200, 50);
+// const lightHelper = new THREE.PointLightHelper(pointLight)
+// const gridHelper = new THREE.GridHelper(200, 50)
 // gridHelper.position.set(0,-10,0)
-// scene.add(lightHelper)//, gridHelper)
+// scene.add(lightHelper, gridHelper)
 
-// const controls = new OrbitControls(camera, renderer.domElement);
-
-
-
-
+scene.position.set(-0.5,-0.5,-0.5)
 
 function animate() {
-    // requestAnimationFrame(anumate);
-    // cube.rotation.x += 0.0;
-    // cube.rotation.y += 0.0;
+    obj_cent.visible = params.visible_cent
+    obj_sat.visible = params.visible_sat
+    obj_virt.visible = params.visible_virt
+    
+    obj_cons.visible = params.visible_cons
+    obj_par.visible = params.visible_par
+    obj_int.visible = params.visible_int
 
+    obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+    obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+    obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+    
+    if(params.highlight=="Left")
+        obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    else if(params.highlight=="Down")
+        obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    else if(params.highlight=="Right")
+        obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    
     controls.update()
-    renderer.render( scene, camera );
-
+    renderer.render( scene, camera )
 }
