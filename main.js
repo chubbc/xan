@@ -157,8 +157,8 @@ sizeFolder.add(params,'n',1,5,1).name('n').onChange(update_lattice)
 sizeFolder.open()
 
 const spinFolder = gui.addFolder('Modes/spins')
-spinFolder.add(params, 'visible_cent').name('<div style="color:black;background-color:#'+params.color_cent.toString(16)+';"> Central modes (primal) </div>')
-spinFolder.add(params, 'visible_sat').name('<div style="color:black;background-color:#'+params.color_sat.toString(16)+';"> Satellite spins (dual) </div>')
+spinFolder.add(params, 'visible_cent').name('<div style="color:black;background-color:#'+params.color_cent.toString(16)+';"> Central (primal) </div>')
+spinFolder.add(params, 'visible_sat').name('<div style="color:black;background-color:#'+params.color_sat.toString(16)+';"> Satellite (dual) </div>')
 spinFolder.add(params, 'visible_virt').name('<div style="color:black;background-color:#'+params.color_virt.toString(16)+';"> Virtual spins </div>')
 spinFolder.open()
 
