@@ -1,22 +1,57 @@
 import * as THREE from 'three'
 import { GUI } from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { FlyControls } from 'three/addons/controls/FlyControls.js';
+import { FirstPersonControls } from 'three/addons/controls/FirstPersonControls.js';
 
 const scene = new THREE.Scene()
-
 scene.background = new THREE.Color(0x222222)
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
+// scene.fog = new THREE.Fog(scene.background, 1,5);
 
-camera.position.set(-2, 0.9, 0.25)
-
-const renderer = new THREE.WebGLRenderer()
+const renderer = new THREE.WebGLRenderer({antialias:true})
 renderer.setPixelRatio(window.devicePixelRatio)
-renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setSize(0.9*window.innerWidth, 0.9* window.innerHeight)
 renderer.setAnimationLoop(animate)
 document.body.appendChild(renderer.domElement)
 
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
+camera.position.set(-2, 0.9, 0.25)
+window.addEventListener("resize",()=>{
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    camera.aspect = window.innerWidth/window.innerHeight
+    camera.updateProjectionMatrix()
+})
+
+// const controls = new FirstPersonControls(camera, renderer.domElement)
+
+
 const controls = new OrbitControls(camera, renderer.domElement)
+// const controls = new PointerLockControls(camera, renderer.domElement)
+// const controls = new PointerLockControls(camera, document.body)
+// controls.addEventListener( 'lock', function () {
+// 	menu.style.display = 'none';
+// } );
+// controls.addEventListener( 'unlock', function () {
+// 	menu.style.display = 'block';
+// } );
+
+const pointLight = new THREE.PointLight(0xffffff,100)
+pointLight.position.set(-7, 5, 6)
+const ambientLight = new THREE.AmbientLight(0xffffff,0.25)
+scene.add(pointLight, ambientLight)
+
+// Helpers
+// const lightHelper = new THREE.PointLightHelper(pointLight)
+// const gridHelper = new THREE.GridHelper(200, 50)
+// gridHelper.position.set(0,-10,0)
+// scene.add(lightHelper, gridHelper)
+
+scene.position.set(-0.5,-0.5,-0.5)
+
+
+
 
 const params = {
     n: 1,
@@ -97,6 +132,12 @@ function update_lattice() {
         add_ball(obj_sat_d,i,j-0.25,k,params.color_sat)
         add_ball(obj_sat_l,i+0.25,j,k,params.color_sat)
     }
+    if(params.highlight=="Left")
+        obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    else if(params.highlight=="Down")
+        obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    else if(params.highlight=="Right")
+        obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
 
     // Virtual
     for(let i=0.5; i<=n; i++) for(let j=0; j<=n; j++) for(let k=0; k<=n; k++)
@@ -143,12 +184,14 @@ function update_lattice() {
     for(let i=0.5; i<n; i++) for(let j=0; j<n; j++) for(let k=1; k<n; k++)
         obj_int.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,j,k-0.25), new THREE.Vector3(i,j+0.25,k), new THREE.Vector3(i,j,k+0.25)]),int_material))
     
-    
-
     scene.add(obj_latt, obj_cent, obj_sat, obj_virt, obj_cons, obj_par, obj_int)
 }
 
 update_lattice()
+
+
+
+
 
 const gui = new GUI()
 
@@ -170,21 +213,22 @@ setFolder.open()
 
 const highlightFolder = gui.addFolder('Highlight')
 highlightFolder.add(params,'highlight').options(['None','Left','Down','Right'])
-    .name('<div style="color:black;background-color:#'+params.color_highlight.toString(16)+';"> Highlighted sat </div>')
+    .name('<div style="color:black;background-color:#'+params.color_highlight.toString(16)+';"> Highlighted sat </div>').onChange(()=>{
+        obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+        obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+        obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
+        if(params.highlight=="Left")
+            obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+        else if(params.highlight=="Down")
+            obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+        else if(params.highlight=="Right")
+            obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
+    })
 highlightFolder.open()
 
-const pointLight = new THREE.PointLight(0xffffff,100)
-pointLight.position.set(-7, 5, 6)
-const ambientLight = new THREE.AmbientLight(0xffffff,0.25)
-scene.add(pointLight, ambientLight)
 
-// Helpers
-// const lightHelper = new THREE.PointLightHelper(pointLight)
-// const gridHelper = new THREE.GridHelper(200, 50)
-// gridHelper.position.set(0,-10,0)
-// scene.add(lightHelper, gridHelper)
 
-scene.position.set(-0.5,-0.5,-0.5)
+
 
 function animate() {
     obj_cent.visible = params.visible_cent
@@ -195,17 +239,6 @@ function animate() {
     obj_par.visible = params.visible_par
     obj_int.visible = params.visible_int
 
-    obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
-    obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
-    obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_sat))
-    
-    if(params.highlight=="Left")
-        obj_sat_l.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
-    else if(params.highlight=="Down")
-        obj_sat_d.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
-    else if(params.highlight=="Right")
-        obj_sat_r.children.forEach(x => x.material.color=new THREE.Color(params.color_highlight))
-    
-    controls.update()
+    controls.update(0.1)
     renderer.render( scene, camera )
 }
